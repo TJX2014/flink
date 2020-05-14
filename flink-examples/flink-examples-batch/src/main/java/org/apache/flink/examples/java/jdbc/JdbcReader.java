@@ -1,5 +1,15 @@
 package org.apache.flink.examples.java.jdbc;
 
+//mysql table:
+//create table tb
+//(
+//id BIGINT UNSIGNED auto_increment comment '自增主键'
+//primary key,
+//cooper BIGINT(19) null ,
+//
+//user_sex VARCHAR(2) null
+//
+//);
 
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
@@ -22,7 +32,7 @@ public class JdbcReader extends RichSourceFunction<Tuple2<String,String>> {
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
-        Class.forName("");//加载数据库驱动
+        Class.forName("com.mysql.jdbc.Driver");//加载数据库驱动
         connection = DriverManager.getConnection("mysql://localhost:3306", "xiaoxing", "123456");//获取连接
         ps = connection.prepareStatement("select * from tb");
     }
