@@ -23,7 +23,12 @@ import org.apache.flink.api.common.functions.ReduceFunction;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.assigners.GlobalWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.triggers.Trigger;
+import org.apache.flink.streaming.api.windowing.triggers.TriggerResult;
+import org.apache.flink.streaming.api.windowing.windows.GlobalWindow;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
 
 /**
@@ -77,7 +82,29 @@ public class SocketWindowWordCount {
 				})
 
 				.keyBy("word")
-				.timeWindow(Time.seconds(5))
+				.timeWindow(Time.seconds(20))
+//				.window(GlobalWindows.create())
+//				.trigger(new Trigger<WordWithCount, GlobalWindow>() {
+//					@Override
+//					public TriggerResult onElement(WordWithCount element, long timestamp, GlobalWindow window, TriggerContext ctx) throws Exception {
+//						return TriggerResult.FIRE;
+//					}
+//
+//					@Override
+//					public TriggerResult onProcessingTime(long time, GlobalWindow window, TriggerContext ctx) throws Exception {
+//						return TriggerResult.CONTINUE;
+//					}
+//
+//					@Override
+//					public TriggerResult onEventTime(long time, GlobalWindow window, TriggerContext ctx) throws Exception {
+//						return TriggerResult.CONTINUE;
+//					}
+//
+//					@Override
+//					public void clear(GlobalWindow window, TriggerContext ctx) throws Exception {
+//
+//					}
+//				})
 
 				.reduce(new ReduceFunction<WordWithCount>() {
 					@Override
