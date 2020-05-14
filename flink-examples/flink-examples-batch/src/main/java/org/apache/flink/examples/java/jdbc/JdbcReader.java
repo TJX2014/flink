@@ -11,6 +11,8 @@ package org.apache.flink.examples.java.jdbc;
 //
 //);
 
+//insert into tb(cooper, user_sex) values(112,'g');
+
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichSourceFunction;
