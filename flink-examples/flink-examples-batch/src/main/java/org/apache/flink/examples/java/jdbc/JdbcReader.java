@@ -33,7 +33,7 @@ public class JdbcReader extends RichSourceFunction<Tuple2<String,String>> {
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
         Class.forName("com.mysql.jdbc.Driver");//加载数据库驱动
-        connection = DriverManager.getConnection("mysql://localhost:3306", "xiaoxing", "123456");//获取连接
+        connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/test", "xiaoxing", "123456");//获取连接
         ps = connection.prepareStatement("select * from tb");
     }
 
@@ -43,11 +43,12 @@ public class JdbcReader extends RichSourceFunction<Tuple2<String,String>> {
         try {
             ResultSet resultSet = ps.executeQuery();
             while (resultSet.next()) {
-                String name = resultSet.getString("nick");
-                String id = resultSet.getString("user_id");
-                logger.error("readJDBC name:{}", name);
+                String cooper = resultSet.getString("cooper");
+                String id = resultSet.getString("id");
+                String sex = resultSet.getString("user_sex");
+                logger.info("readJDBC cooper:{}  id:{} sex:{}", cooper, id, sex);
                 Tuple2<String,String> tuple2 = new Tuple2<>();
-                tuple2.setFields(id,name);
+                tuple2.setFields(id,cooper);
                 ctx.collect(tuple2);//发送结果，结果是tuple2类型，2表示两个元素，可根据实际情况选择
             }
         } catch (Exception e) {
