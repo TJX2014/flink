@@ -1,7 +1,9 @@
 package org.apache.flink.table.examples.java;
 
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
 public class MysqlStreamTableJDBC {
@@ -11,8 +13,8 @@ public class MysqlStreamTableJDBC {
 	 * debug
 	 * */
 	public static void main(String[] args) throws Exception {
-		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
+		EnvironmentSettings settings = EnvironmentSettings.newInstance().build();
+		TableEnvironment tEnv = TableEnvironment.create(settings);
 
 		tEnv.executeSql("CREATE TABLE currency (\n" +
 			"  currency_id BIGINT,\n" +
