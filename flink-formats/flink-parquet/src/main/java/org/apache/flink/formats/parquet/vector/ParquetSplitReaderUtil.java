@@ -83,6 +83,7 @@ public class ParquetSplitReaderUtil {
 	 */
 	public static ParquetColumnarRowSplitReader genPartColumnarRowReader(
 			boolean utcTimestamp,
+			boolean caseSensitive,
 			Configuration conf,
 			String[] fullFieldNames,
 			DataType[] fullFieldTypes,
@@ -112,13 +113,14 @@ public class ParquetSplitReaderUtil {
 				LogicalType type = fullFieldTypes[selectedFields[i]].getLogicalType();
 				vectors[i] = partitionSpec.containsKey(name) ?
 						createVectorFromConstant(type, partitionSpec.get(name), batchSize) :
-						readVectors[i];
+						readVectors[selNonPartNames.indexOf(name)];
 			}
 			return new VectorizedColumnBatch(vectors);
 		};
 
 		return new ParquetColumnarRowSplitReader(
 				utcTimestamp,
+				caseSensitive,
 				conf,
 				Arrays.stream(selParquetFields)
 						.mapToObj(i -> fullFieldTypes[i].getLogicalType())

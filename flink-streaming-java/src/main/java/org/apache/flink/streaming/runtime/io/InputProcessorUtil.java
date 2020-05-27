@@ -19,6 +19,7 @@ package org.apache.flink.streaming.runtime.io;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
+import org.apache.flink.runtime.io.network.partition.consumer.IndexedInputGate;
 import org.apache.flink.runtime.io.network.partition.consumer.InputGate;
 import org.apache.flink.runtime.jobgraph.tasks.AbstractInvokable;
 import org.apache.flink.runtime.metrics.MetricNames;
@@ -26,6 +27,8 @@ import org.apache.flink.runtime.metrics.groups.TaskIOMetricGroup;
 import org.apache.flink.streaming.api.graph.StreamConfig;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -41,12 +44,13 @@ public class InputProcessorUtil {
 			AbstractInvokable toNotifyOnCheckpoint,
 			StreamConfig config,
 			ChannelStateWriter channelStateWriter,
-			InputGate inputGate,
+			IndexedInputGate[] inputGates,
 			TaskIOMetricGroup taskIOMetricGroup,
 			String taskName) {
+		InputGate inputGate = InputGateUtil.createInputGate(inputGates);
 		CheckpointBarrierHandler barrierHandler = createCheckpointBarrierHandler(
 			config,
-			IntStream.of(inputGate.getNumberOfInputChannels()),
+			Arrays.stream(inputGates).mapToInt(InputGate::getNumberOfInputChannels),
 			channelStateWriter,
 			taskName,
 			generateChannelIndexToInputGateMap(inputGate),
@@ -63,36 +67,57 @@ public class InputProcessorUtil {
 	 * @return a pair of {@link CheckpointedInputGate} created for two corresponding
 	 * {@link InputGate}s supplied as parameters.
 	 */
-	public static CheckpointedInputGate[] createCheckpointedInputGatePair(
+	public static CheckpointedInputGate[] createCheckpointedMultipleInputGate(
 			AbstractInvokable toNotifyOnCheckpoint,
 			StreamConfig config,
 			ChannelStateWriter channelStateWriter,
 			TaskIOMetricGroup taskIOMetricGroup,
 			String taskName,
-			InputGate ...inputGates) {
-		Map<InputGate, Integer> inputGateToChannelIndexOffset = generateInputGateToChannelIndexOffsetMap(inputGates);
+			Collection<IndexedInputGate> ...inputGates) {
+
+		InputGate[] unionedInputGates = new InputGate[inputGates.length];
+		for (int i = 0; i < inputGates.length; i++) {
+			unionedInputGates[i] = InputGateUtil.createInputGate(inputGates[i].toArray(new IndexedInputGate[0]));
+		}
+
+		IntStream numberOfInputChannelsPerGate =
+			Arrays
+				.stream(inputGates)
+				.flatMap(collection -> collection.stream())
+				.sorted(Comparator.comparingInt(IndexedInputGate::getGateIndex))
+				.mapToInt(InputGate::getNumberOfInputChannels);
+
+		Map<InputGate, Integer> inputGateToChannelIndexOffset = generateInputGateToChannelIndexOffsetMap(unionedInputGates);
+		// Note that numberOfInputChannelsPerGate and inputGateToChannelIndexOffset have a bit different
+		// indexing and purposes.
+		//
+		// The numberOfInputChannelsPerGate is indexed based on flattened input gates, and sorted based on GateIndex,
+		// so that it can be used in combination with InputChannelInfo class.
+		//
+		// The inputGateToChannelIndexOffset is based upon unioned input gates and it's use for translating channel
+		// indexes from perspective of UnionInputGate to perspective of SingleInputGate.
 
 		CheckpointBarrierHandler barrierHandler = createCheckpointBarrierHandler(
 			config,
-			Arrays.stream(inputGates).mapToInt(InputGate::getNumberOfInputChannels),
+			numberOfInputChannelsPerGate,
 			channelStateWriter,
 			taskName,
-			generateChannelIndexToInputGateMap(inputGates),
+			generateChannelIndexToInputGateMap(unionedInputGates),
 			inputGateToChannelIndexOffset,
 			toNotifyOnCheckpoint);
 		registerCheckpointMetrics(taskIOMetricGroup, barrierHandler);
 
 		barrierHandler.getBufferReceivedListener().ifPresent(listener -> {
-			for (final InputGate inputGate : inputGates) {
+			for (final InputGate inputGate : unionedInputGates) {
 				inputGate.registerBufferReceivedListener(listener);
 			}
 		});
 
-		CheckpointedInputGate[] checkpointedInputGates = new CheckpointedInputGate[inputGates.length];
+		CheckpointedInputGate[] checkpointedInputGates = new CheckpointedInputGate[unionedInputGates.length];
 
-		for (int i = 0; i < inputGates.length; i++) {
+		for (int i = 0; i < unionedInputGates.length; i++) {
 			checkpointedInputGates[i] = new CheckpointedInputGate(
-				inputGates[i], barrierHandler, inputGateToChannelIndexOffset.get(inputGates[i]));
+				unionedInputGates[i], barrierHandler, inputGateToChannelIndexOffset.get(unionedInputGates[i]));
 		}
 
 		return checkpointedInputGates;
@@ -109,10 +134,17 @@ public class InputProcessorUtil {
 		switch (config.getCheckpointMode()) {
 			case EXACTLY_ONCE:
 				if (config.isUnalignedCheckpointsEnabled()) {
-					return new CheckpointBarrierUnaligner(
-						numberOfInputChannelsPerGate.toArray(),
-						channelStateWriter,
-						taskName,
+					return new AlternatingCheckpointBarrierHandler(
+						new CheckpointBarrierAligner(
+							taskName,
+							channelIndexToInputGate,
+							inputGateToChannelIndexOffset,
+							toNotifyOnCheckpoint),
+						new CheckpointBarrierUnaligner(
+							numberOfInputChannelsPerGate.toArray(),
+							channelStateWriter,
+							taskName,
+							toNotifyOnCheckpoint),
 						toNotifyOnCheckpoint);
 				}
 				return new CheckpointBarrierAligner(

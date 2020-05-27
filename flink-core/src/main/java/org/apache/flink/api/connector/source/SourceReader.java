@@ -19,8 +19,8 @@
 package org.apache.flink.api.connector.source;
 
 import org.apache.flink.annotation.Public;
+import org.apache.flink.core.io.InputStatus;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
  * @param <SplitT> The type of the the source splits.
  */
 @Public
-public interface SourceReader<T, SplitT extends SourceSplit> extends Serializable, AutoCloseable {
+public interface SourceReader<T, SplitT extends SourceSplit> extends AutoCloseable {
 
 	/**
 	 * Start the reader.
@@ -46,12 +46,12 @@ public interface SourceReader<T, SplitT extends SourceSplit> extends Serializabl
 	 *
 	 * <p>Although the implementation can emit multiple records into the given SourceOutput,
 	 * it is recommended not doing so. Instead, emit one record into the SourceOutput
-	 * and return a {@link Status#AVAILABLE_NOW} to let the caller thread
+	 * and return a {@link InputStatus#MORE_AVAILABLE} to let the caller thread
 	 * know there are more records available.
 	 *
-	 * @return The {@link Status} of the SourceReader after the method invocation.
+	 * @return The InputStatus of the SourceReader after the method invocation.
 	 */
-	Status pollNext(SourceOutput<T> sourceOutput) throws Exception;
+	InputStatus pollNext(SourceOutput<T> sourceOutput) throws Exception;
 
 	/**
 	 * Checkpoint on the state of the source.
@@ -78,16 +78,4 @@ public interface SourceReader<T, SplitT extends SourceSplit> extends Serializabl
 	 * @param sourceEvent the event sent by the {@link SplitEnumerator}.
 	 */
 	void handleSourceEvents(SourceEvent sourceEvent);
-
-	/**
-	 * The status of this reader.
-	 */
-	enum Status {
-		/** The next record is available right now. */
-		AVAILABLE_NOW,
-		/** The next record will be available later. */
-		AVAILABLE_LATER,
-		/** The source reader has completed all the reading work. */
-		FINISHED
-	}
 }
