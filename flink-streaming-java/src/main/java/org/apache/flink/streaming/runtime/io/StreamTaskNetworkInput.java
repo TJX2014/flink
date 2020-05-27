@@ -21,6 +21,7 @@ package org.apache.flink.streaming.runtime.io;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.core.io.InputStatus;
 import org.apache.flink.runtime.checkpoint.channel.ChannelStateWriter;
 import org.apache.flink.runtime.event.AbstractEvent;
 import org.apache.flink.runtime.io.disk.iomanager.IOManager;
@@ -210,12 +211,14 @@ public final class StreamTaskNetworkInput<T> implements StreamTaskInput<T> {
 			final InputChannel channel = checkpointedInputGate.getChannel(channelIndex);
 
 			// Assumption for retrieving buffers = one concurrent checkpoint
-			recordDeserializers[channelIndex].getUnconsumedBuffer().ifPresent(buffer ->
+			RecordDeserializer<?> deserializer = recordDeserializers[channelIndex];
+			if (deserializer != null) {
 				channelStateWriter.addInputData(
 					checkpointId,
 					channel.getChannelInfo(),
 					ChannelStateWriter.SEQUENCE_NUMBER_UNKNOWN,
-					buffer));
+					deserializer.getUnconsumedBuffer());
+			}
 
 			checkpointedInputGate.spillInflightBuffers(checkpointId, channelIndex, channelStateWriter);
 		}
