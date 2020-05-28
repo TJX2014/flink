@@ -1,12 +1,34 @@
 package org.apache.flink.table.examples.java;
 
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.EnvironmentSettings;
-import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
-import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.api.TableResult;
 
 public class MysqlStreamTableJDBC {
+
+	/**
+	 *
+	 *
+ docker run -d  -e MYSQL_USER=xiaoxing -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -e MYSQL_DATABASE=flink -p 3307:3306 mysql:8.0
+	create database flink;
+	use flink;
+
+	 CREATE TABLE currency (
+	 currency_id BIGINT,
+	 currency_name varchar(255),
+	 rate DOUBLE,
+	 currency_timestamp  TIMESTAMP,
+	 country varchar(255),
+	 precise_timestamp TIMESTAMP(6),
+	 precise_time TIME(6),
+	 gdp DECIMAL(10, 6)
+	 );
+
+	 insert into flink.currency(
+	 currency_id,currency_name,rate,currency_timestamp,country,precise_timestamp,precise_time,gdp) values
+	 (1,'dollar',102,'2020-05-06 13:07:29','China','2020-05-06 13:07:29.166132','13:07:29.166132',-132.576);
+
+	 * */
 
 
 	/**
@@ -28,16 +50,15 @@ public class MysqlStreamTableJDBC {
 			") WITH (\n" +
 			"   'connector' = 'jdbc',\n" +
 			"   'url' = 'jdbc:mysql://localhost:3306/flink',\n" +
-			"   'username' = 'root',\n" +
+			"   'username' = 'xiaoxing',\n" +
 			"   'password' = '123456',\n" +
 			"   'table-name' = 'currency',\n" +
 			"   'driver' = 'com.mysql.jdbc.Driver',\n" +
 			"   'lookup.cache.max-rows' = '500',\n" +
 			"   'lookup.cache.ttl' = '10s',\n" +
 			"   'lookup.max-retries' = '3')");
-		Table t = tEnv.sqlQuery("select * from currency");
-		t.execute();
-//		env.execute();
+		TableResult result = tEnv.executeSql("select * from currency");
+		result.print();
 
 	}
 }
