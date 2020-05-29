@@ -35,7 +35,8 @@ public class MysqlStreamTableJDBC {
 	 * debug
 	 * */
 	public static void main(String[] args) throws Exception {
-		EnvironmentSettings settings = EnvironmentSettings.newInstance().build();
+		EnvironmentSettings settings = EnvironmentSettings.newInstance()
+			.useBlinkPlanner().inBatchMode().build();
 		TableEnvironment tEnv = TableEnvironment.create(settings);
 
 		tEnv.executeSql("CREATE TABLE currency (\n" +
