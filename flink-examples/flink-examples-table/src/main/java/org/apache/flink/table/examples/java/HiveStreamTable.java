@@ -7,6 +7,7 @@ import org.apache.flink.table.api.TableResult;
 public class HiveStreamTable {
 
 	public static void main(String[] args) {
+//		https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/hive/
 		EnvironmentSettings settings = EnvironmentSettings.newInstance().build();
 		settings.toPlannerProperties().put("table.sql-dialect", "hive");
 		TableEnvironment tEnv = TableEnvironment.create(settings);
