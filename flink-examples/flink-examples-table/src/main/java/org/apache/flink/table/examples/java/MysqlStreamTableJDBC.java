@@ -9,7 +9,7 @@ public class MysqlStreamTableJDBC {
 	/**
 	 *
 	 *
- docker run -d  -e MYSQL_USER=xiaoxing -e MYSQL_ALLOW_EMPTY_PASSWORD=yes -e MYSQL_DATABASE=flink -p 3307:3306 mysql:8.0
+ docker run -d  -e MYSQL_USER=root -e MYSQL_ROOT_PASSWORD=123456 -e MYSQL_DATABASE=flink -p 3307:3306 mariadb:latest
 	create database flink;
 	use flink;
 
@@ -49,14 +49,17 @@ public class MysqlStreamTableJDBC {
 			"  gdp DECIMAL(10, 6)\n" +
 			") WITH (\n" +
 			"   'connector' = 'jdbc',\n" +
-			"   'url' = 'jdbc:mysql://localhost:3306/flink',\n" +
-			"   'username' = 'xiaoxing',\n" +
+			"   'url' = 'jdbc:mysql://0.0.0.0:3307/flink',\n" +
+			"   'username' = 'root',\n" +
 			"   'password' = '123456',\n" +
 			"   'table-name' = 'currency',\n" +
 			"   'driver' = 'com.mysql.jdbc.Driver',\n" +
 			"   'lookup.cache.max-rows' = '500',\n" +
 			"   'lookup.cache.ttl' = '10s',\n" +
 			"   'lookup.max-retries' = '3')");
+
+//		org.mariadb.jdbc.Driver
+
 		TableResult result = tEnv.executeSql("select * from currency");
 		result.print();
 
