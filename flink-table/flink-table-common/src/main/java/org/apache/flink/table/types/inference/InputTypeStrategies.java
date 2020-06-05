@@ -19,10 +19,14 @@
 package org.apache.flink.table.types.inference;
 
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.table.functions.BuiltInFunctionDefinitions;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.inference.strategies.AndArgumentTypeStrategy;
 import org.apache.flink.table.types.inference.strategies.AnyArgumentTypeStrategy;
 import org.apache.flink.table.types.inference.strategies.ArrayInputTypeStrategy;
+import org.apache.flink.table.types.inference.strategies.CastInputTypeStrategy;
+import org.apache.flink.table.types.inference.strategies.ComparableTypeStrategy;
+import org.apache.flink.table.types.inference.strategies.ConstraintArgumentTypeStrategy;
 import org.apache.flink.table.types.inference.strategies.ExplicitArgumentTypeStrategy;
 import org.apache.flink.table.types.inference.strategies.FamilyArgumentTypeStrategy;
 import org.apache.flink.table.types.inference.strategies.LiteralArgumentTypeStrategy;
@@ -36,9 +40,11 @@ import org.apache.flink.table.types.inference.strategies.VaryingSequenceInputTyp
 import org.apache.flink.table.types.inference.strategies.WildcardInputTypeStrategy;
 import org.apache.flink.table.types.logical.LogicalTypeFamily;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
+import org.apache.flink.table.types.logical.StructuredType.StructuredComparision;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -140,6 +146,16 @@ public final class InputTypeStrategies {
 		return new WildcardInputTypeStrategy(argumentCount);
 	}
 
+	/**
+	 * Strategy that checks all types are comparable with each other. Requires at least two
+	 * arguments.
+	 */
+	public static InputTypeStrategy comparable(
+			ConstantArgumentCount argumentCount,
+			StructuredComparision requiredComparision) {
+		return new ComparableTypeStrategy(argumentCount, requiredComparision);
+	}
+
 	// --------------------------------------------------------------------------------------------
 	// Argument type strategies
 	// --------------------------------------------------------------------------------------------
@@ -206,6 +222,15 @@ public final class InputTypeStrategies {
 	}
 
 	/**
+	 * Strategy for an argument that must fulfill a given constraint.
+	 */
+	public static ConstraintArgumentTypeStrategy constraint(
+			String constraintMessage,
+			Function<List<DataType>, Boolean> evaluator) {
+		return new ConstraintArgumentTypeStrategy(constraintMessage, evaluator);
+	}
+
+	/**
 	 * Strategy for a conjunction of multiple {@link ArgumentTypeStrategy}s into one like
 	 * {@code f(NUMERIC && LITERAL)}.
 	 *
@@ -235,24 +260,44 @@ public final class InputTypeStrategies {
 		return new OrArgumentTypeStrategy(Arrays.asList(strategies));
 	}
 
+
 	// --------------------------------------------------------------------------------------------
-	// Specific type strategies
+	// Specific input type strategies
 	// --------------------------------------------------------------------------------------------
 
 	/**
-	 * Strategy specific for {@link org.apache.flink.table.functions.BuiltInFunctionDefinitions#ARRAY}.
+	 * Strategy specific for {@link BuiltInFunctionDefinitions#CAST}.
+	 */
+	public static final InputTypeStrategy SPECIFIC_FOR_CAST = new CastInputTypeStrategy();
+
+	/**
+	 * Strategy specific for {@link BuiltInFunctionDefinitions#ARRAY}.
 	 *
 	 * <p>It expects at least one argument. All the arguments must have a common super type.
 	 */
 	public static final InputTypeStrategy SPECIFIC_FOR_ARRAY = new ArrayInputTypeStrategy();
 
 	/**
-	 * Strategy specific for {@link org.apache.flink.table.functions.BuiltInFunctionDefinitions#MAP}.
+	 * Strategy specific for {@link BuiltInFunctionDefinitions#MAP}.
 	 *
 	 * <p>It expects at least two arguments. There must be even number of arguments.
 	 * All the keys and values must have a common super type respectively.
 	 */
 	public static final InputTypeStrategy SPECIFIC_FOR_MAP = new MapInputTypeStrategy();
+
+	/**
+	 * Strategy that checks all types are fully comparable with each other. Requires exactly two arguments.
+	 */
+	public static final InputTypeStrategy TWO_FULLY_COMPARABLE = comparable(
+		ConstantArgumentCount.of(2), StructuredComparision.FULL
+	);
+
+	/**
+	 * Strategy that checks all types are equals comparable with each other. Requires exactly two arguments.
+	 */
+	public static final InputTypeStrategy TWO_EQUALS_COMPARABLE = comparable(
+		ConstantArgumentCount.of(2), StructuredComparision.EQUALS
+	);
 
 	// --------------------------------------------------------------------------------------------
 

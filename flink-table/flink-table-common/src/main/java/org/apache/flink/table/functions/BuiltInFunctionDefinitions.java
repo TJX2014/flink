@@ -19,11 +19,14 @@
 package org.apache.flink.table.functions;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.types.inference.ConstantArgumentCount;
 import org.apache.flink.table.types.inference.InputTypeStrategies;
 import org.apache.flink.table.types.inference.TypeStrategies;
 import org.apache.flink.table.types.logical.LogicalTypeFamily;
+import org.apache.flink.table.types.logical.LogicalTypeRoot;
+import org.apache.flink.table.types.logical.StructuredType.StructuredComparision;
 import org.apache.flink.util.Preconditions;
 
 import java.lang.reflect.Field;
@@ -37,10 +40,18 @@ import static org.apache.flink.table.functions.FunctionKind.AGGREGATE;
 import static org.apache.flink.table.functions.FunctionKind.OTHER;
 import static org.apache.flink.table.functions.FunctionKind.SCALAR;
 import static org.apache.flink.table.types.inference.InputTypeStrategies.OUTPUT_IF_NULL;
+import static org.apache.flink.table.types.inference.InputTypeStrategies.SPECIFIC_FOR_CAST;
+import static org.apache.flink.table.types.inference.InputTypeStrategies.TWO_EQUALS_COMPARABLE;
+import static org.apache.flink.table.types.inference.InputTypeStrategies.TWO_FULLY_COMPARABLE;
 import static org.apache.flink.table.types.inference.InputTypeStrategies.and;
+import static org.apache.flink.table.types.inference.InputTypeStrategies.comparable;
 import static org.apache.flink.table.types.inference.InputTypeStrategies.logical;
 import static org.apache.flink.table.types.inference.InputTypeStrategies.or;
+import static org.apache.flink.table.types.inference.InputTypeStrategies.sequence;
 import static org.apache.flink.table.types.inference.InputTypeStrategies.varyingSequence;
+import static org.apache.flink.table.types.inference.InputTypeStrategies.wildcardWithCount;
+import static org.apache.flink.table.types.inference.TypeStrategies.explicit;
+import static org.apache.flink.table.types.inference.TypeStrategies.nullable;
 
 /**
  * Dictionary of function definitions for all built-in functions.
@@ -53,19 +64,34 @@ public final class BuiltInFunctionDefinitions {
 		new BuiltInFunctionDefinition.Builder()
 			.name("and")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(
+				varyingSequence(
+					logical(LogicalTypeRoot.BOOLEAN),
+					logical(LogicalTypeRoot.BOOLEAN),
+					logical(LogicalTypeRoot.BOOLEAN)
+				)
+			)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition OR =
 		new BuiltInFunctionDefinition.Builder()
 			.name("or")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(
+				varyingSequence(
+					logical(LogicalTypeRoot.BOOLEAN),
+					logical(LogicalTypeRoot.BOOLEAN),
+					logical(LogicalTypeRoot.BOOLEAN)
+				)
+			)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition NOT =
 		new BuiltInFunctionDefinition.Builder()
 			.name("not")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(sequence(logical(LogicalTypeRoot.BOOLEAN)))
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition IF =
 		new BuiltInFunctionDefinition.Builder()
@@ -79,85 +105,99 @@ public final class BuiltInFunctionDefinitions {
 		new BuiltInFunctionDefinition.Builder()
 			.name("equals")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(TWO_EQUALS_COMPARABLE)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition GREATER_THAN =
 		new BuiltInFunctionDefinition.Builder()
 			.name("greaterThan")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(TWO_FULLY_COMPARABLE)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition GREATER_THAN_OR_EQUAL =
 		new BuiltInFunctionDefinition.Builder()
 			.name("greaterThanOrEqual")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(TWO_FULLY_COMPARABLE)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition LESS_THAN =
 		new BuiltInFunctionDefinition.Builder()
 			.name("lessThan")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(TWO_FULLY_COMPARABLE)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition LESS_THAN_OR_EQUAL =
 		new BuiltInFunctionDefinition.Builder()
 			.name("lessThanOrEqual")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(TWO_FULLY_COMPARABLE)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition NOT_EQUALS =
 		new BuiltInFunctionDefinition.Builder()
 			.name("notEquals")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(TWO_EQUALS_COMPARABLE)
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition IS_NULL =
 		new BuiltInFunctionDefinition.Builder()
 			.name("isNull")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(wildcardWithCount(ConstantArgumentCount.of(1)))
+			.outputTypeStrategy(explicit(DataTypes.BOOLEAN().notNull()))
 			.build();
 	public static final BuiltInFunctionDefinition IS_NOT_NULL =
 		new BuiltInFunctionDefinition.Builder()
 			.name("isNotNull")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(wildcardWithCount(ConstantArgumentCount.of(1)))
+			.outputTypeStrategy(explicit(DataTypes.BOOLEAN().notNull()))
 			.build();
 	public static final BuiltInFunctionDefinition IS_TRUE =
 		new BuiltInFunctionDefinition.Builder()
 			.name("isTrue")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(sequence(logical(LogicalTypeRoot.BOOLEAN)))
+			.outputTypeStrategy(explicit(DataTypes.BOOLEAN().notNull()))
 			.build();
 	public static final BuiltInFunctionDefinition IS_FALSE =
 		new BuiltInFunctionDefinition.Builder()
 			.name("isFalse")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(sequence(logical(LogicalTypeRoot.BOOLEAN)))
+			.outputTypeStrategy(explicit(DataTypes.BOOLEAN().notNull()))
 			.build();
 	public static final BuiltInFunctionDefinition IS_NOT_TRUE =
 		new BuiltInFunctionDefinition.Builder()
 			.name("isNotTrue")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(sequence(logical(LogicalTypeRoot.BOOLEAN)))
+			.outputTypeStrategy(explicit(DataTypes.BOOLEAN().notNull()))
 			.build();
 	public static final BuiltInFunctionDefinition IS_NOT_FALSE =
 		new BuiltInFunctionDefinition.Builder()
 			.name("isNotFalse")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(sequence(logical(LogicalTypeRoot.BOOLEAN)))
+			.outputTypeStrategy(explicit(DataTypes.BOOLEAN().notNull()))
 			.build();
 	public static final BuiltInFunctionDefinition BETWEEN =
 		new BuiltInFunctionDefinition.Builder()
 			.name("between")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(comparable(ConstantArgumentCount.of(3), StructuredComparision.FULL))
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 	public static final BuiltInFunctionDefinition NOT_BETWEEN =
 		new BuiltInFunctionDefinition.Builder()
 			.name("notBetween")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(comparable(ConstantArgumentCount.of(3), StructuredComparision.FULL))
+			.outputTypeStrategy(nullable(explicit(DataTypes.BOOLEAN())))
 			.build();
 
 	// aggregate functions
@@ -880,7 +920,8 @@ public final class BuiltInFunctionDefinitions {
 		new BuiltInFunctionDefinition.Builder()
 			.name("cast")
 			.kind(SCALAR)
-			.outputTypeStrategy(TypeStrategies.MISSING)
+			.inputTypeStrategy(SPECIFIC_FOR_CAST)
+			.outputTypeStrategy(nullable(ConstantArgumentCount.to(0), TypeStrategies.argument(1)))
 			.build();
 	public static final BuiltInFunctionDefinition REINTERPRET_CAST =
 		new BuiltInFunctionDefinition.Builder()

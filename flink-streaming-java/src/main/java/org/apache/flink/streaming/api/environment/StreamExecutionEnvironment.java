@@ -17,6 +17,7 @@
 
 package org.apache.flink.streaming.api.environment;
 
+import org.apache.flink.annotation.Experimental;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.Public;
 import org.apache.flink.annotation.PublicEvolving;
@@ -24,6 +25,7 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.InvalidProgramException;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.cache.DistributedCache;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.InvalidTypesException;
 import org.apache.flink.api.common.io.FileInputFormat;
 import org.apache.flink.api.common.io.FilePathFilter;
@@ -1589,7 +1591,6 @@ public class StreamExecutionEnvironment {
 	 * 		the user defined type information for the stream
 	 * @return the data stream constructed
 	 */
-	@SuppressWarnings("unchecked")
 	public <OUT> DataStreamSource<OUT> addSource(SourceFunction<OUT> function, String sourceName, TypeInformation<OUT> typeInfo) {
 
 		TypeInformation<OUT> resolvedTypeInfo = getTypeInfo(function, sourceName, SourceFunction.class, typeInfo);
@@ -1613,9 +1614,12 @@ public class StreamExecutionEnvironment {
 	 * 		type of the returned stream
 	 * @return the data stream constructed
 	 */
-	@PublicEvolving
-	public <OUT> DataStreamSource<OUT> continuousSource(Source<OUT, ?, ?> source, String sourceName) {
-		return continuousSource(source, sourceName, null);
+	@Experimental
+	public <OUT> DataStreamSource<OUT> continuousSource(
+			Source<OUT, ?, ?> source,
+			WatermarkStrategy<OUT> timestampsAndWatermarks,
+			String sourceName) {
+		return continuousSource(source, timestampsAndWatermarks, sourceName, null);
 	}
 
 	/**
@@ -1631,13 +1635,21 @@ public class StreamExecutionEnvironment {
 	 * 		the user defined type information for the stream
 	 * @return the data stream constructed
 	 */
-	@PublicEvolving
+	@Experimental
 	public <OUT> DataStreamSource<OUT> continuousSource(
 			Source<OUT, ?, ?> source,
+			WatermarkStrategy<OUT> timestampsAndWatermarks,
 			String sourceName,
 			TypeInformation<OUT> typeInfo) {
-		TypeInformation<OUT> resolvedTypeInfo = getTypeInfo(source, sourceName, Source.class, typeInfo);
-		return new DataStreamSource<>(this, source, resolvedTypeInfo, sourceName);
+
+		final TypeInformation<OUT> resolvedTypeInfo = getTypeInfo(source, sourceName, Source.class, typeInfo);
+
+		return new DataStreamSource<>(
+				this,
+				checkNotNull(source, "source"),
+				checkNotNull(timestampsAndWatermarks, "timestampsAndWatermarks"),
+				checkNotNull(resolvedTypeInfo),
+				checkNotNull(sourceName));
 	}
 
 	/**
