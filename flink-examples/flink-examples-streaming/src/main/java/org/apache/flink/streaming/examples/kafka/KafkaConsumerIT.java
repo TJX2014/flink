@@ -4,9 +4,6 @@ import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
-import org.apache.flink.connector.hbase.sink.HBaseSinkFunction;
-import org.apache.flink.connector.hbase.sink.LegacyMutationConverter;
-import org.apache.flink.connector.hbase.util.HBaseTableSchema;
 import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
 import org.apache.flink.connector.jdbc.JdbcSink;
 import org.apache.flink.formats.csv.CsvRowDeserializationSchema;
@@ -31,6 +28,13 @@ import java.util.Properties;
  bin/kafka-console-consumer.sh --topic test1 --bootstrap-server localhost:9092
 
 * */
+
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.apache.flink.streaming.connectors.kafka.KafkaTableSource;
+import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.types.Row;
+
+import java.util.Properties;
 
 public class KafkaConsumerIT {
     public static void main(String[] args) throws Exception {
