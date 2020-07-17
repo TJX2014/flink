@@ -13,28 +13,19 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.KafkaTableSource;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.types.Row;
-import org.apache.hadoop.conf.Configuration;
 
 import java.util.Properties;
 
 /**
- nohup bin/kafka-server-start.sh config/server.properties > /tmp/logs &
-
- bin/kafka-topics.sh --create --bootstrap-server localhost:9091 --topic test1 --partitions 1 --replication-factor 1
-
- bin/kafka-topics.sh --create --zookeeper localhost:2181 --topic test1 --partitions 1 --replication-factor 1
-
- bin/kafka-console-producer.sh --topic test1 --broker-list localhost:9092
- bin/kafka-console-consumer.sh --topic test1 --bootstrap-server localhost:9092
-
-* */
-
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-import org.apache.flink.streaming.connectors.kafka.KafkaTableSource;
-import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.types.Row;
-
-import java.util.Properties;
+ * nohup bin/kafka-server-start.sh config/server.properties > /tmp/logs &
+ * <p>
+ * bin/kafka-topics.sh --create --bootstrap-server localhost:9091 --topic test1 --partitions 1 --replication-factor 1
+ * <p>
+ * bin/kafka-topics.sh --create --zookeeper localhost:2181 --topic test1 --partitions 1 --replication-factor 1
+ * <p>
+ * bin/kafka-console-producer.sh --topic test1 --broker-list localhost:9092
+ * bin/kafka-console-consumer.sh --topic test1 --bootstrap-server localhost:9092
+ */
 
 public class KafkaConsumerIT {
     public static void main(String[] args) throws Exception {
