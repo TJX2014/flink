@@ -68,7 +68,28 @@ public class KafkaConsumerIT {
 //        HBaseSinkFunction hSink = new HBaseSinkFunction("h111", conf,
 //                new LegacyMutationConverter(hTableSchema), 1, 1, 1);
 //        ds.addSink(hSink);
-        ds.print();
+//        ds.print();
         env.execute();
     }
 }
+
+//StreamExecutionEnvironment bsEnv = StreamExecutionEnvironment.getExecutionEnvironment();
+//EnvironmentSettings bsSettings = EnvironmentSettings.newInstance().useBlinkPlanner().inStreamingMode().build();
+//StreamTableEnvironment bsTableEnv = StreamTableEnvironment.create(bsEnv, bsSettings);
+//bsEnv.setParallelism(1);
+//......
+//bsTableEnv.executeSql("CREATE TABLE aaa(\n" +
+//		"    `area_code`	VARCHAR,\n" +
+//                "    `stat_date`	DATE,\n" +
+//                "    `index`		BIGINT,\n" +
+//                "    PRIMARY KEY (area_code, stat_date) NOT ENFORCED" +
+//                ") WITH (\n" +
+//                "  'connector'  = 'jdbc',\n" +
+//                "  'url'        = 'jdbc:mysql://***/laowufp_data_test',\n" +
+//                "  'table-name' = 'aaa',\n" +
+//                "  'driver'     = 'com.mysql.cj.jdbc.Driver',\n" +
+//                "  'username'   = '***',\n" +
+//                "  'password'   = '***'\n" +
+//                ")");
+//
+//		bsTableEnv.executeSql("INSERT INTO aaa SELECT area_code, CURRENT_DATE AS stat_date, count(*) AS index FROM bbb WHERE is_record = '是' GROUP BY area_code");
