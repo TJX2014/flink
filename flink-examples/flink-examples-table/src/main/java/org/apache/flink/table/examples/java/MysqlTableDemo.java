@@ -48,7 +48,9 @@ public class MysqlTableDemo {
                 ")");
 
 
-        bsTableEnv.executeSql("INSERT INTO aaa SELECT area_code, CURRENT_DATE AS stat_date, count(*) AS index FROM bbb WHERE is_record = '是' GROUP BY area_code");
+        bsTableEnv.executeSql("INSERT INTO aaa SELECT area_code, CURRENT_DATE AS stat_date, " +
+                "count(*) AS index FROM bbb WHERE is_record = '是' GROUP BY area_code").print();
+
 
         bsTableEnv.execute("action result");
 //		Table table = bsTableEnv.sqlQuery("SELECT area_code, CURRENT_DATE AS stat_date, count(*) AS index FROM bbb WHERE is_record = '是' GROUP BY area_code");
