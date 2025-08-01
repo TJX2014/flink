@@ -259,11 +259,6 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
         }
     }
 
-    @Override
-    public boolean supportsManagedTable() {
-        return true;
-    }
-
     // ------ tables and views ------
 
     @Override
@@ -408,15 +403,15 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
     public void alterModel(ObjectPath modelPath, CatalogModel newModel, boolean ignoreIfNotExists)
             throws ModelNotExistException {
         checkNotNull(modelPath);
-        checkNotNull(newModel);
 
         CatalogModel existingModel = models.get(modelPath);
-        if (existingModel == null) {
+        if (existingModel == null || newModel == null) {
             if (ignoreIfNotExists) {
                 return;
             }
             throw new ModelNotExistException(getName(), modelPath);
         }
+
         models.put(modelPath, newModel.copy());
     }
 
@@ -599,8 +594,10 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
             CatalogPartitionSpec partitionSpec,
             CatalogPartition partition,
             boolean ignoreIfExists)
-            throws TableNotExistException, TableNotPartitionedException,
-                    PartitionSpecInvalidException, PartitionAlreadyExistsException,
+            throws TableNotExistException,
+                    TableNotPartitionedException,
+                    PartitionSpecInvalidException,
+                    PartitionAlreadyExistsException,
                     CatalogException {
         checkNotNull(tablePath);
         checkNotNull(partitionSpec);
@@ -677,8 +674,10 @@ public class GenericInMemoryCatalog extends AbstractCatalog {
     @Override
     public List<CatalogPartitionSpec> listPartitions(
             ObjectPath tablePath, CatalogPartitionSpec partitionSpec)
-            throws TableNotExistException, TableNotPartitionedException,
-                    PartitionSpecInvalidException, CatalogException {
+            throws TableNotExistException,
+                    TableNotPartitionedException,
+                    PartitionSpecInvalidException,
+                    CatalogException {
         checkNotNull(tablePath);
         checkNotNull(partitionSpec);
 

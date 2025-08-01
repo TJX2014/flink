@@ -41,6 +41,7 @@ import org.apache.flink.table.types.logical.utils.LogicalTypeChecks
 import org.apache.flink.table.types.logical.utils.LogicalTypeChecks.{getFieldTypes, getPrecision, getScale}
 import org.apache.flink.table.types.logical.utils.LogicalTypeMerging.findCommonType
 import org.apache.flink.table.utils.DateTimeUtils.MILLIS_PER_DAY
+import org.apache.flink.types.ColumnList
 import org.apache.flink.util.Preconditions.checkArgument
 
 import java.time.ZoneId
@@ -418,6 +419,26 @@ object ScalarOperatorGens {
     // row types
     else if (isRow(left.resultType) && canEqual) {
       wrapExpressionIfNonEq(nonEq, generateRowComparison(ctx, left, right, resultType), resultType)
+    }
+    // structured types
+    else if (isStructuredType(left.resultType)) {
+      if (canEqual) {
+        val supportsEquality = left.resultType.asInstanceOf[StructuredType].getComparison.isEquality
+        if (!supportsEquality) {
+          throw new ValidationException(
+            s"Equality is not supported on structured type ${left.resultType}.")
+        }
+        wrapExpressionIfNonEq(
+          nonEq,
+          generateRowComparison(ctx, left, right, resultType),
+          resultType)
+      } else if (isStructuredType(right.resultType)) {
+        throw new ValidationException(
+          s"Incompatible structured types: ${left.resultType} and ${right.resultType}.")
+      } else {
+        throw new ValidationException(
+          s"Incompatible types: ${left.resultType} and ${right.resultType}.")
+      }
     }
     // multiset types
     else if (isMultiset(left.resultType) && canEqual) {
@@ -1100,6 +1121,20 @@ object ScalarOperatorGens {
   // value construction and accessing generate utils
   // ----------------------------------------------------------------------------------------
 
+  def generateDescriptor(
+      ctx: CodeGeneratorContext,
+      operands: Seq[GeneratedExpression],
+      resultType: LogicalType): GeneratedExpression = {
+    val columnNames = operands
+      .map(_.literalValue)
+      .map(
+        _.getOrElse(throw new CodeGenException("String literals expected for DESCRIPTOR operands")))
+      .map(_.toString)
+    val columnList = ColumnList.of(columnNames.toList)
+    val columnListTerm = ctx.addReusableObject(columnList, "columnList", className[ColumnList])
+    GeneratedExpression(columnListTerm, NEVER_NULL, NO_CODE, resultType)
+  }
+
   def generateRow(
       ctx: CodeGeneratorContext,
       rowType: LogicalType,
@@ -1388,7 +1423,7 @@ object ScalarOperatorGens {
          |    $resultTerm = $nullTerm ? $defaultValue : $arrayGet;
          |    break;
          |  default:
-         |    throw new RuntimeException("Array has more than one element.");
+         |    throw new org.apache.flink.table.api.TableRuntimeException("Array has more than one element.");
          |}
          |""".stripMargin
 

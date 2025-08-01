@@ -27,7 +27,6 @@ import org.apache.flink.table.types.inference.InputTypeStrategies;
 import org.apache.flink.table.types.inference.InputTypeStrategy;
 import org.apache.flink.table.types.logical.LogicalTypeFamily;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
-import org.apache.flink.table.types.logical.StructuredType;
 import org.apache.flink.table.types.logical.TimestampKind;
 
 import static org.apache.flink.table.types.inference.InputTypeStrategies.LITERAL;
@@ -64,6 +63,12 @@ public final class SpecificInputTypeStrategies {
     /** See {@link OverTypeStrategy}. */
     public static final InputTypeStrategy OVER = new OverTypeStrategy();
 
+    /** See {@link ObjectOfInputTypeStrategy}. */
+    public static final InputTypeStrategy OBJECT_OF = new ObjectOfInputTypeStrategy();
+
+    /** See {@link ObjectUpdateInputTypeStrategy}. */
+    public static final InputTypeStrategy OBJECT_UPDATE = new ObjectUpdateInputTypeStrategy();
+
     /** See {@link WindowTimeIndictorInputTypeStrategy}. */
     public static InputTypeStrategy windowTimeIndicator(TimestampKind timestampKind) {
         return new WindowTimeIndictorInputTypeStrategy(timestampKind);
@@ -81,10 +86,10 @@ public final class SpecificInputTypeStrategies {
                     logical(LogicalTypeFamily.BINARY_STRING),
                     logical(LogicalTypeFamily.TIMESTAMP),
                     logical(LogicalTypeFamily.CONSTRUCTED),
+                    logical(LogicalTypeFamily.NUMERIC),
                     logical(LogicalTypeRoot.STRUCTURED_TYPE),
                     logical(LogicalTypeRoot.DISTINCT_TYPE),
-                    logical(LogicalTypeRoot.BOOLEAN),
-                    logical(LogicalTypeFamily.NUMERIC));
+                    logical(LogicalTypeRoot.BOOLEAN));
 
     /** See {@link JsonQueryOnErrorEmptyArgumentTypeStrategy}. */
     public static final ArgumentTypeStrategy JSON_QUERY_ON_EMPTY_ERROR_BEHAVIOUR =
@@ -155,14 +160,14 @@ public final class SpecificInputTypeStrategies {
      * arguments.
      */
     public static final InputTypeStrategy TWO_FULLY_COMPARABLE =
-            comparable(ConstantArgumentCount.of(2), StructuredType.StructuredComparison.FULL);
+            comparable(ConstantArgumentCount.of(2), StructuredComparison.FULL);
 
     /**
      * Strategy that checks all types are equals comparable with each other. Requires exactly two
      * arguments.
      */
     public static final InputTypeStrategy TWO_EQUALS_COMPARABLE =
-            comparable(ConstantArgumentCount.of(2), StructuredType.StructuredComparison.EQUALS);
+            comparable(ConstantArgumentCount.of(2), StructuredComparison.EQUALS);
 
     /** Type strategy specific for {@link BuiltInFunctionDefinitions#IN}. */
     public static final InputTypeStrategy IN = new SubQueryInputTypeStrategy();

@@ -19,15 +19,22 @@
 package org.apache.flink.table.types.inference;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.logical.LogicalType;
+import org.apache.flink.table.types.logical.LogicalTypeRoot;
+import org.apache.flink.table.types.logical.NullType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.logical.StructuredType;
+import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
 import java.util.EnumSet;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Describes an argument in a static signature that is not overloaded and does not support varargs.
@@ -43,6 +50,8 @@ import java.util.Optional;
 @PublicEvolving
 public class StaticArgument {
 
+    private static final RowType DUMMY_ROW_TYPE = RowType.of(new NullType());
+
     private final String name;
     private final @Nullable DataType dataType;
     private final @Nullable Class<?> conversionClass;
@@ -55,13 +64,15 @@ public class StaticArgument {
             @Nullable Class<?> conversionClass,
             boolean isOptional,
             EnumSet<StaticArgumentTrait> traits) {
-        StaticArgumentTrait.checkIntegrity(
-                Preconditions.checkNotNull(traits, "Traits must not be null."));
         this.name = Preconditions.checkNotNull(name, "Name must not be null.");
         this.dataType = dataType;
         this.conversionClass = conversionClass;
         this.isOptional = isOptional;
-        this.traits = traits;
+        this.traits = Preconditions.checkNotNull(traits, "Traits must not be null.");
+        checkName();
+        checkTraits(traits);
+        checkOptionalType();
+        checkTableType();
     }
 
     /**
@@ -81,8 +92,8 @@ public class StaticArgument {
     /**
      * Declares a table argument such as {@code f(t => myTable)} or {@code f(t => TABLE myTable))}.
      *
-     * <p>The argument can have {@link StaticArgumentTrait#TABLE_AS_ROW} (default) or {@link
-     * StaticArgumentTrait#TABLE_AS_SET} semantics.
+     * <p>The argument can have {@link StaticArgumentTrait#ROW_SEMANTIC_TABLE} (default) or {@link
+     * StaticArgumentTrait#SET_SEMANTIC_TABLE} semantics.
      *
      * <p>By only providing a conversion class, the argument supports a "polymorphic" behavior. In
      * other words: it accepts tables with an arbitrary number of columns with arbitrary data types.
@@ -102,8 +113,8 @@ public class StaticArgument {
         Preconditions.checkNotNull(conversionClass, "Conversion class must not be null.");
         final EnumSet<StaticArgumentTrait> enrichedTraits = EnumSet.copyOf(traits);
         enrichedTraits.add(StaticArgumentTrait.TABLE);
-        if (!enrichedTraits.contains(StaticArgumentTrait.TABLE_AS_SET)) {
-            enrichedTraits.add(StaticArgumentTrait.TABLE_AS_ROW);
+        if (!enrichedTraits.contains(StaticArgumentTrait.SET_SEMANTIC_TABLE)) {
+            enrichedTraits.add(StaticArgumentTrait.ROW_SEMANTIC_TABLE);
         }
         return new StaticArgument(name, null, conversionClass, isOptional, enrichedTraits);
     }
@@ -111,8 +122,8 @@ public class StaticArgument {
     /**
      * Declares a table argument such as {@code f(t => myTable)} or {@code f(t => TABLE myTable))}.
      *
-     * <p>The argument can have {@link StaticArgumentTrait#TABLE_AS_ROW} (default) or {@link
-     * StaticArgumentTrait#TABLE_AS_SET} semantics.
+     * <p>The argument can have {@link StaticArgumentTrait#ROW_SEMANTIC_TABLE} (default) or {@link
+     * StaticArgumentTrait#SET_SEMANTIC_TABLE} semantics.
      *
      * <p>By providing a concrete data type, the argument only accepts tables with corresponding
      * number of columns and data types. The data type must be a {@link RowType} or {@link
@@ -137,8 +148,8 @@ public class StaticArgument {
             EnumSet<StaticArgumentTrait> traits) {
         final EnumSet<StaticArgumentTrait> enrichedTraits = EnumSet.copyOf(traits);
         enrichedTraits.add(StaticArgumentTrait.TABLE);
-        if (!enrichedTraits.contains(StaticArgumentTrait.TABLE_AS_SET)) {
-            enrichedTraits.add(StaticArgumentTrait.TABLE_AS_ROW);
+        if (!enrichedTraits.contains(StaticArgumentTrait.SET_SEMANTIC_TABLE)) {
+            enrichedTraits.add(StaticArgumentTrait.ROW_SEMANTIC_TABLE);
         }
         return enrichedTraits;
     }
@@ -161,5 +172,155 @@ public class StaticArgument {
 
     public EnumSet<StaticArgumentTrait> getTraits() {
         return traits;
+    }
+
+    public boolean is(StaticArgumentTrait trait) {
+        return traits.contains(trait);
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder s = new StringBuilder();
+        // Possible signatures:
+        // (myScalar INT)
+        // (myTypedTable ROW<i INT> {TABLE BY ROW})
+        // (myUntypedTable {TABLE BY ROW})
+        s.append(name);
+        s.append(" =>");
+        if (dataType != null) {
+            s.append(" ");
+            s.append(dataType);
+        }
+        if (!traits.equals(EnumSet.of(StaticArgumentTrait.SCALAR))) {
+            s.append(" ");
+            s.append(
+                    traits.stream()
+                            .map(Enum::name)
+                            .map(n -> n.replace('_', ' '))
+                            .collect(Collectors.joining(", ", "{", "}")));
+        }
+        return s.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final StaticArgument that = (StaticArgument) o;
+        return isOptional == that.isOptional
+                && Objects.equals(name, that.name)
+                && Objects.equals(dataType, that.dataType)
+                && Objects.equals(conversionClass, that.conversionClass)
+                && Objects.equals(traits, that.traits);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, dataType, conversionClass, isOptional, traits);
+    }
+
+    private void checkName() {
+        if (!TypeInference.PARAMETER_NAME_FORMAT.test(name)) {
+            throw new ValidationException(
+                    String.format(
+                            "Invalid argument name '%s'. An argument must follow "
+                                    + "the pattern [a-zA-Z_$][a-zA-Z_$0-9]*.",
+                            name));
+        }
+    }
+
+    private void checkTraits(EnumSet<StaticArgumentTrait> traits) {
+        if (traits.stream().filter(t -> t.getRequirements().isEmpty()).count() != 1) {
+            throw new ValidationException(
+                    String.format(
+                            "Invalid argument traits for argument '%s'. "
+                                    + "An argument must be declared as either scalar, table, or model.",
+                            name));
+        }
+        traits.forEach(
+                trait ->
+                        trait.getRequirements()
+                                .forEach(
+                                        requirement -> {
+                                            if (!traits.contains(requirement)) {
+                                                throw new ValidationException(
+                                                        String.format(
+                                                                "Invalid argument traits for argument '%s'. Trait %s requires %s.",
+                                                                name, trait, requirement));
+                                            }
+                                        }));
+    }
+
+    private void checkOptionalType() {
+        if (!isOptional) {
+            return;
+        }
+        // e.g. for untyped table arguments
+        if (dataType == null) {
+            return;
+        }
+
+        final LogicalType type = dataType.getLogicalType();
+        if (!type.isNullable() || !type.supportsInputConversion(dataType.getConversionClass())) {
+            throw new ValidationException(
+                    String.format(
+                            "Invalid data type for optional argument '%s'. "
+                                    + "An optional argument has to accept null values.",
+                            name));
+        }
+    }
+
+    private void checkTableType() {
+        if (!traits.contains(StaticArgumentTrait.TABLE)) {
+            return;
+        }
+        checkTableNotOptional();
+        checkPolymorphicTableType();
+        checkTypedTableType();
+    }
+
+    private void checkTableNotOptional() {
+        if (isOptional) {
+            throw new ValidationException("Table arguments must not be optional.");
+        }
+    }
+
+    private void checkPolymorphicTableType() {
+        if (dataType != null || conversionClass == null) {
+            return;
+        }
+        if (!DUMMY_ROW_TYPE.supportsInputConversion(conversionClass)) {
+            throw new ValidationException(
+                    String.format(
+                            "Invalid conversion class '%s' for argument '%s'. "
+                                    + "Polymorphic, untyped table arguments must use a row class.",
+                            conversionClass.getName(), name));
+        }
+    }
+
+    private void checkTypedTableType() {
+        if (dataType == null) {
+            return;
+        }
+        final LogicalType type = dataType.getLogicalType();
+        if (traits.contains(StaticArgumentTrait.TABLE)
+                && !LogicalTypeChecks.isCompositeType(type)) {
+            throw new ValidationException(
+                    String.format(
+                            "Invalid data type '%s' for table argument '%s'. "
+                                    + "Typed table arguments must use a composite type (i.e. row or structured type).",
+                            type, name));
+        }
+        if (is(StaticArgumentTrait.SUPPORT_UPDATES) && !type.is(LogicalTypeRoot.ROW)) {
+            throw new ValidationException(
+                    String.format(
+                            "Invalid data type '%s' for table argument '%s'. "
+                                    + "Table arguments that support updates must use a row type.",
+                            type, name));
+        }
     }
 }

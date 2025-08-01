@@ -60,6 +60,7 @@ public class StreamNode implements Serializable {
 
     private final int id;
     private int parallelism;
+
     /**
      * Maximum parallelism for this stream node. The maximum parallelism is the upper limit for
      * dynamic scaling and the number of key groups used for partitioned state.
@@ -97,6 +98,8 @@ public class StreamNode implements Serializable {
     private String userHash;
 
     private final Map<Integer, StreamConfig.InputRequirement> inputRequirements = new HashMap<>();
+
+    private @Nullable Map<String, String> additionalMetricVariables;
 
     private @Nullable IntermediateDataSetID consumeClusterDatasetId;
 
@@ -224,7 +227,7 @@ public class StreamNode implements Serializable {
      *
      * @return Maximum parallelism
      */
-    int getMaxParallelism() {
+    public int getMaxParallelism() {
         return maxParallelism;
     }
 
@@ -233,7 +236,7 @@ public class StreamNode implements Serializable {
      *
      * @param maxParallelism Maximum parallelism to be set
      */
-    void setMaxParallelism(int maxParallelism) {
+    public void setMaxParallelism(int maxParallelism) {
         this.maxParallelism = maxParallelism;
     }
 
@@ -273,7 +276,6 @@ public class StreamNode implements Serializable {
         this.bufferTimeout = bufferTimeout;
     }
 
-    @VisibleForTesting
     public StreamOperator<?> getOperator() {
         assert operatorFactory != null && operatorFactory instanceof SimpleOperatorFactory;
         return (StreamOperator<?>) ((SimpleOperatorFactory) operatorFactory).getOperator();
@@ -406,6 +408,14 @@ public class StreamNode implements Serializable {
 
     public Map<Integer, StreamConfig.InputRequirement> getInputRequirements() {
         return inputRequirements;
+    }
+
+    public @Nullable Map<String, String> getAdditionalMetricVariables() {
+        return additionalMetricVariables;
+    }
+
+    public void setAdditionalMetricVariables(Map<String, String> additionalMetricVariables) {
+        this.additionalMetricVariables = additionalMetricVariables;
     }
 
     public Optional<OperatorCoordinator.Provider> getCoordinatorProvider(

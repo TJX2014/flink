@@ -41,6 +41,7 @@ import org.apache.flink.runtime.state.LocalRecoveryConfig;
 import org.apache.flink.runtime.state.OperatorStateBackend;
 import org.apache.flink.runtime.state.StreamCompressionDecorator;
 import org.apache.flink.runtime.state.metrics.LatencyTrackingStateConfig;
+import org.apache.flink.runtime.state.metrics.SizeTrackingStateConfig;
 import org.apache.flink.state.rocksdb.RocksDBMemoryControllerUtils.RocksDBMemoryFactory;
 import org.apache.flink.state.rocksdb.sstmerge.RocksDBManualCompactionConfig;
 import org.apache.flink.util.AbstractID;
@@ -196,6 +197,7 @@ public class EmbeddedRocksDBStateBackend extends AbstractManagedMemoryStateBacke
 
     /** Factory for Write Buffer Manager and Block Cache. */
     private RocksDBMemoryFactory rocksDBMemoryFactory;
+
     // ------------------------------------------------------------------------
 
     private final RocksDBManualCompactionConfig manualCompactionConfig;
@@ -314,8 +316,9 @@ public class EmbeddedRocksDBStateBackend extends AbstractManagedMemoryStateBacke
             throw new FlinkRuntimeException(e);
         }
 
-        // configure latency tracking
+        // configure latency and size tracking
         latencyTrackingConfigBuilder = original.latencyTrackingConfigBuilder.configure(config);
+        sizeTrackingConfigBuilder = original.sizeTrackingConfigBuilder.configure(config);
 
         // configure overlap fraction threshold
         overlapFractionThreshold =
@@ -491,6 +494,8 @@ public class EmbeddedRocksDBStateBackend extends AbstractManagedMemoryStateBacke
 
         LatencyTrackingStateConfig latencyTrackingStateConfig =
                 latencyTrackingConfigBuilder.setMetricGroup(parameters.getMetricGroup()).build();
+        SizeTrackingStateConfig sizeTrackingStateConfig =
+                sizeTrackingConfigBuilder.setMetricGroup(parameters.getMetricGroup()).build();
         RocksDBKeyedStateBackendBuilder<K> builder =
                 new RocksDBKeyedStateBackendBuilder<>(
                                 parameters.getOperatorIdentifier(),
@@ -507,6 +512,7 @@ public class EmbeddedRocksDBStateBackend extends AbstractManagedMemoryStateBacke
                                 priorityQueueConfig,
                                 parameters.getTtlTimeProvider(),
                                 latencyTrackingStateConfig,
+                                sizeTrackingStateConfig,
                                 parameters.getMetricGroup(),
                                 parameters.getCustomInitializationMetrics(),
                                 parameters.getStateHandles(),

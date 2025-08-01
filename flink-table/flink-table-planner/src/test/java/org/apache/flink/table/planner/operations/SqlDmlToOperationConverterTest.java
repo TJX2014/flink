@@ -42,7 +42,6 @@ import org.apache.flink.table.planner.parse.CalciteParser;
 import org.apache.calcite.sql.SqlNode;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -229,12 +228,34 @@ public class SqlDmlToOperationConverterTest extends SqlNodeToOperationConversion
     }
 
     @Test
+    public void testSqlRichExplainWithExecuteStatementSet() {
+        final String sql =
+                "EXPLAIN EXECUTE STATEMENT SET BEGIN "
+                        + "INSERT INTO t1 SELECT a, b, c, d FROM t2 WHERE a > 1;"
+                        + "INSERT INTO t1 SELECT a, b, c, d FROM t2 WHERE a > 2;"
+                        + "END";
+        FlinkPlannerImpl planner = getPlannerBySqlDialect(SqlDialect.DEFAULT);
+        final CalciteParser parser = getParserBySqlDialect(SqlDialect.DEFAULT);
+        Operation operation = parse(sql, planner, parser);
+        assertThat(operation).isInstanceOf(ExplainOperation.class);
+    }
+
+    @Test
     public void testSqlExecuteWithInsert() {
         final String sql = "execute insert into t1 select a, b, c, d from t2 where a > 1";
         FlinkPlannerImpl planner = getPlannerBySqlDialect(SqlDialect.DEFAULT);
         final CalciteParser parser = getParserBySqlDialect(SqlDialect.DEFAULT);
         Operation operation = parse(sql, planner, parser);
         assertThat(operation).isInstanceOf(SinkModifyOperation.class);
+    }
+
+    @Test
+    public void testSqlRichExplainWithExecuteInsert() {
+        final String sql = "EXPLAIN EXECUTE INSERT INTO t1 SELECT a, b, c, d FROM t2";
+        FlinkPlannerImpl planner = getPlannerBySqlDialect(SqlDialect.DEFAULT);
+        final CalciteParser parser = getParserBySqlDialect(SqlDialect.DEFAULT);
+        Operation operation = parse(sql, planner, parser);
+        assertThat(operation).isInstanceOf(ExplainOperation.class);
     }
 
     @Test
@@ -247,18 +268,27 @@ public class SqlDmlToOperationConverterTest extends SqlNodeToOperationConversion
     }
 
     @Test
+    public void testSqlRichExplainWithExecuteSelect() {
+        final String sql = "EXPLAIN EXECUTE SELECT a, b, c, d FROM t2";
+        FlinkPlannerImpl planner = getPlannerBySqlDialect(SqlDialect.DEFAULT);
+        final CalciteParser parser = getParserBySqlDialect(SqlDialect.DEFAULT);
+        Operation operation = parse(sql, planner, parser);
+        assertThat(operation).isInstanceOf(ExplainOperation.class);
+    }
+
+    @Test
     public void testDelete() throws Exception {
         Map<String, String> options = new HashMap<>();
         options.put("connector", TestUpdateDeleteTableFactory.IDENTIFIER);
         CatalogTable catalogTable =
-                CatalogTable.of(
-                        Schema.newBuilder()
-                                .column("a", DataTypes.INT().notNull())
-                                .column("c", DataTypes.STRING().notNull())
-                                .build(),
-                        null,
-                        Collections.emptyList(),
-                        options);
+                CatalogTable.newBuilder()
+                        .schema(
+                                Schema.newBuilder()
+                                        .column("a", DataTypes.INT().notNull())
+                                        .column("c", DataTypes.STRING().notNull())
+                                        .build())
+                        .options(options)
+                        .build();
         ObjectIdentifier tableIdentifier = ObjectIdentifier.of("builtin", "default", "test_delete");
         catalogManager.createTable(catalogTable, tableIdentifier, false);
 
@@ -285,15 +315,15 @@ public class SqlDmlToOperationConverterTest extends SqlNodeToOperationConversion
         Map<String, String> options = new HashMap<>();
         options.put("connector", TestUpdateDeleteTableFactory.IDENTIFIER);
         CatalogTable catalogTable =
-                CatalogTable.of(
-                        Schema.newBuilder()
-                                .column("a", DataTypes.INT().notNull())
-                                .column("b", DataTypes.BIGINT().nullable())
-                                .column("c", DataTypes.STRING().notNull())
-                                .build(),
-                        null,
-                        Collections.emptyList(),
-                        options);
+                CatalogTable.newBuilder()
+                        .schema(
+                                Schema.newBuilder()
+                                        .column("a", DataTypes.INT().notNull())
+                                        .column("b", DataTypes.BIGINT().nullable())
+                                        .column("c", DataTypes.STRING().notNull())
+                                        .build())
+                        .options(options)
+                        .build();
         ObjectIdentifier tableIdentifier = ObjectIdentifier.of("builtin", "default", "test_update");
         catalogManager.createTable(catalogTable, tableIdentifier, false);
 

@@ -25,6 +25,8 @@ import org.apache.flink.runtime.state.ttl.TtlUtils;
 import org.apache.flink.runtime.state.ttl.TtlValue;
 import org.apache.flink.runtime.state.v2.internal.InternalListState;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.function.FunctionWithException;
+import org.apache.flink.util.function.ThrowingConsumer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,8 +34,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 /**
  * This class wraps list state with TTL logic.
@@ -123,6 +123,16 @@ class TtlListState<K, N, T>
         return withTs;
     }
 
+    @Override
+    public StateFuture<Void> asyncMergeNamespaces(N target, Collection<N> sources) {
+        return original.asyncMergeNamespaces(target, sources);
+    }
+
+    @Override
+    public void mergeNamespaces(N target, Collection<N> sources) {
+        original.mergeNamespaces(target, sources);
+    }
+
     private class IteratorWithCleanup implements Iterator<T> {
         private final Iterator<TtlValue<T>> originalIterator;
         private boolean anyUnexpired = false;
@@ -186,8 +196,8 @@ class TtlListState<K, N, T>
 
         @Override
         public <U> StateFuture<Collection<U>> onNext(
-                Function<T, StateFuture<? extends U>> iterating) {
-            Function<TtlValue<T>, StateFuture<? extends U>> ttlIterating =
+                FunctionWithException<T, StateFuture<? extends U>, Exception> iterating) {
+            FunctionWithException<TtlValue<T>, StateFuture<? extends U>, Exception> ttlIterating =
                     (item) -> {
                         T element = getElementWithTtlCheck(item);
                         if (element != null) {
@@ -200,8 +210,8 @@ class TtlListState<K, N, T>
         }
 
         @Override
-        public StateFuture<Void> onNext(Consumer<T> iterating) {
-            Consumer<TtlValue<T>> ttlIterating =
+        public StateFuture<Void> onNext(ThrowingConsumer<T, Exception> iterating) {
+            ThrowingConsumer<TtlValue<T>, Exception> ttlIterating =
                     (item) -> {
                         T element = getElementWithTtlCheck(item);
                         if (element != null) {
